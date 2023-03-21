@@ -26,6 +26,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import kotlinx.android.synthetic.main.activity_main.*
+import org.opencv.android.OpenCVLoader
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
@@ -112,7 +113,33 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 //        ib_camera.setOnClickListener {
 //            takePicture()
 //        }
+
+//        if (OpenCVLoader.initDebug()) println("LOADED : success")
+//        else println("LOADED : error")
+
+        if (OpenCVLoader.initDebug()) {
+            println("MainActivity: Opencv is loaded")
+        }
+        else {
+            println("MainActivity: Opencv falide to load")
+        }
     }
+
+//    fun makeGray(bitmap: Bitmap) : Bitmap {
+//
+//        // Create OpenCV mat object and copy content from bitmap
+//        val mat = Mat()
+//        Utils.bitmapToMat(bitmap, mat)
+//
+//        // Convert to grayscale
+//        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY)
+//
+//        // Make a mutable bitmap to copy grayscale image
+//        val grayBitmap = bitmap.copy(bitmap.config, true)
+//        Utils.matToBitmap(mat, grayBitmap)
+//
+//        return grayBitmap
+//    }
 
     override fun onResume() {
         // onResume 위에 센서 설정을 해야 한다.
@@ -200,7 +227,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         val level = characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)
         val fps =
             characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
-        Log.d(tagName, "최대 프레임 비율 : ${fps[fps.size - 1]} hardware level : $level")
+        // Log.d(tagName, "최대 프레임 비율 : ${fps[fps.size - 1]} hardware level : $level")
 
         //StreamConfigurationMap 객체에는 카메라의 각종 지원 정보가 담겨져있다.
         map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
@@ -209,10 +236,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         mPreviewSize = map!!.getOutputSizes(SurfaceTexture::class.java)[0]
         val fpsForVideo = map!!.highSpeedVideoFpsRanges
 
-        Log.e(
-            tagName,
-            "for video ${fpsForVideo[fpsForVideo.size - 1]} preview Size width: ${mPreviewSize!!.width} height : $height"
-        )
+//        Log.e(
+//            tagName,
+//            "for video ${fpsForVideo[fpsForVideo.size - 1]} preview Size width: ${mPreviewSize!!.width} height : $height"
+//        )
 
         //권한 체크
         if (checkPermission()) {
@@ -282,6 +309,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
      * 사진 캡처
      */
     private fun takePicture() {
+        ImagePixelLog()
+
+
         var jpegSizes: Array<Size>? = map?.getOutputSizes(ImageFormat.JPEG)
 
         var width = 640
@@ -517,6 +547,16 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         System.exit(0)
     }
 
+    // <------------------------------------------------------------------------------------------------------------------------>
+    // 20일 이후 추가.
+
+    fun ImagePixelLog() {
+        val texture = preview.surfaceTexture
+        val surface = Surface(texture)
+
+//        texture.
+//        println("imagePixel :" +  preview.getBitmap())
+    }
 
 
 

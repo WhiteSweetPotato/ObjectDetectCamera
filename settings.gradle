@@ -1,2 +1,4 @@
 include ':app'
 rootProject.name='CameraEx'
+include ':openCVLibrary3413'
+include ':openCV'
