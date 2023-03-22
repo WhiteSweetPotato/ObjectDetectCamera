@@ -1,10 +1,12 @@
 package com.example.cameraex
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ImageFormat
+import android.graphics.SurfaceTexture
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -13,27 +15,32 @@ import android.hardware.camera2.*
 import android.hardware.camera2.params.StreamConfigurationMap
 import android.media.Image
 import android.media.ImageReader
-import android.os.*
-import android.util.*
+import android.os.Bundle
+import android.os.Environment
+import android.os.Handler
+import android.os.HandlerThread
+import android.util.Log
+import android.util.Size
 import android.view.*
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import org.opencv.android.OpenCVLoader
+import org.opencv.android.Utils
+import org.opencv.core.CvType
+import org.opencv.core.Mat
+import org.opencv.imgcodecs.Imgcodecs
+import org.opencv.imgproc.Imgproc
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
-import java.lang.System.exit
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
-import java.util.*
 
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
@@ -114,9 +121,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 //            takePicture()
 //        }
 
-//        if (OpenCVLoader.initDebug()) println("LOADED : success")
-//        else println("LOADED : error")
-
         if (OpenCVLoader.initDebug()) {
             println("MainActivity: Opencv is loaded")
         }
@@ -124,22 +128,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             println("MainActivity: Opencv falide to load")
         }
     }
-
-//    fun makeGray(bitmap: Bitmap) : Bitmap {
-//
-//        // Create OpenCV mat object and copy content from bitmap
-//        val mat = Mat()
-//        Utils.bitmapToMat(bitmap, mat)
-//
-//        // Convert to grayscale
-//        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY)
-//
-//        // Make a mutable bitmap to copy grayscale image
-//        val grayBitmap = bitmap.copy(bitmap.config, true)
-//        Utils.matToBitmap(mat, grayBitmap)
-//
-//        return grayBitmap
-//    }
 
     override fun onResume() {
         // onResume 위에 센서 설정을 해야 한다.
@@ -294,7 +282,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 null,
                 backgroundHandler
             )
-
         }
     }
 
@@ -309,9 +296,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
      * 사진 캡처
      */
     private fun takePicture() {
-        ImagePixelLog()
-
-
         var jpegSizes: Array<Size>? = map?.getOutputSizes(ImageFormat.JPEG)
 
         var width = 640
@@ -407,24 +391,26 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         when (event?.action) {
             MotionEvent.ACTION_DOWN -> {
                 touchCount++
-                onTouch(circleView, event)
+                edgeDetectionEdgeView(event)
+                moveView(circleView, event)
                 if (boxOnOff == 0) {
                     circleView.visibility = View.VISIBLE
                     boxOnOff = 1
-                }
-                else {
+                } else {
                     circleView.visibility = View.INVISIBLE
                     boxOnOff = 0
                 }
             }
             MotionEvent.ACTION_UP -> {
-                onTouch(circleView, event)
+                edgeDetectionEdgeView(event)
+                moveView(circleView, event)
                 Handler().postDelayed({
                     if (touchCount > 0)
                         touchCount-- }, DELAY)
             }
             MotionEvent.ACTION_MOVE -> {
-                onTouch(circleView, event)
+                edgeDetectionEdgeView(event)
+                moveView(circleView, event)
             }
         }
 
@@ -437,11 +423,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     // boxView를 터치한 곳으로 옮기는 함수
-    fun onTouch(v: View, event: MotionEvent): Boolean {
+    fun moveView(v: View, event: MotionEvent): Boolean {
         val parentWidth = (v.parent as ViewGroup).width // 부모 View 의 Width
         val parentHeight = (v.parent as ViewGroup).height // 부모 View 의 Height
+        // view 왼쪽 위를 v.x, v.y로 해야함
         v.x = event.x - v.width / 2
         v.y = event.y - v.height / 2
+
+        // println("event.x : " + event.x + " event.y : " + event.y) // event.x : 1034.121 event.y : 2155.9832
+
         if (v.x < 0) {
             v.setX(0f)
         } else if (v.x + v.width > parentWidth) {
@@ -550,14 +540,163 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     // <------------------------------------------------------------------------------------------------------------------------>
     // 20일 이후 추가.
 
+    // bitmap을 회색으로 변경하고 반환한다.
+    fun makeGray(bitmap: Bitmap) : Bitmap {
+
+        // Create OpenCV mat object and copy content from bitmap
+        val mat = Mat()
+        Utils.bitmapToMat(bitmap, mat)
+
+        // Convert to grayscale
+        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGB2GRAY)
+
+        // Make a mutable bitmap to copy grayscale image
+        val grayBitmap = bitmap.copy(bitmap.config, true)
+        Utils.matToBitmap(mat, grayBitmap)
+
+        return grayBitmap
+    }
+
     fun ImagePixelLog() {
         val texture = preview.surfaceTexture
         val surface = Surface(texture)
 
-//        texture.
-//        println("imagePixel :" +  preview.getBitmap())
+        val bitmap = makeGray(preview.getBitmap())
+        val canvas = Canvas(bitmap)
+        preview.draw(canvas)
     }
 
+    fun ImageToGrayedgeView() {
+        val bitmap = makeGray(preview.getBitmap())
+        edgeView.setImageBitmap(bitmap)
+    }
+
+    // preview의 edge를 detection하여 edgeView에 보여준다.
+    fun edgeDetectionPreView() {
+        val bitmap = makeGray(preview.getBitmap())
+
+        val image = Mat()
+        val edge = Mat()
+        Utils.bitmapToMat(bitmap, image)
+
+        Imgproc.Canny(image, edge, 0.0, 100.0)
+
+        val edgeBitmap = bitmap.copy(bitmap.config, true)
+        Utils.matToBitmap(edge, edgeBitmap)
+
+        edgeView.setImageBitmap(edgeBitmap)
+    }
+
+    // Kotlin-side mask Bitmap to Mat converter
+    fun Bitmap.maskToMat(view : View): Mat {
+        val mat = Mat(view.width, view.height, CvType.CV_8UC1)
+        val obj = copy(Bitmap.Config.ARGB_8888, true)
+        Utils.bitmapToMat(obj, mat)
+        Imgproc.cvtColor(mat, mat, CvType.CV_8UC1)
+        Imgproc.cvtColor(mat, mat, Imgcodecs.IMREAD_GRAYSCALE)
+        return mat
+    }
+
+    // Original image Bitmap to Mat converter
+    fun Bitmap.objToMat(view : View): Mat {
+        val mat = Mat(view.width, view.height, CvType.CV_8UC1)
+        val obj = copy(Bitmap.Config.ARGB_8888, true)
+        Utils.bitmapToMat(obj, mat)
+        return mat
+    }
+
+    // preview의 edge를 detection하여 edgeView에 보여준다.
+    fun edgeDetectionEdgeView(event: MotionEvent) {
+        var bitmap = makeGray(preview.bitmap)
+
+        if (cropBitmap(edgeView, event, bitmap) != null) bitmap = cropBitmap(edgeView, event, bitmap)!!
+        val image = Mat()
+        val edge = Mat()
+
+        Utils.bitmapToMat(bitmap, image)
+
+        Imgproc.Canny(image, edge, 0.0, 50.0)
+
+        val edgeBitmap = bitmap.copy(bitmap.config, true)
+        Utils.matToBitmap(edge, edgeBitmap)
+
+        edgeView.setImageBitmap(edgeBitmap)
+        moveView(edgeView, event)
+    }
+
+    fun cropBitmap(edgeV : View, event: MotionEvent, original: Bitmap): Bitmap? {
+        val v : View = edgeV
+//        val parentWidth = 1080 // 부모 View 의 Width
+//        val parentHeight = 2160 - 360 // 부모 View 의 Height
+
+        // 위아래 빈공간
+        val emptySpace = 340
+        val maxHeight = preview.height
+
+        val parentWidth = (v.parent as ViewGroup).width
+        val parentHeight = (v.parent as ViewGroup).height - emptySpace
+        v.x = (event.x - v.width / 2)
+        v.y = (event.y - v.height / 2)
+
+        // 아래 부분 남는 곳 처리.
+        // if (v.y + v.height > parentHeight - v.height/2) v.y = (parentHeight - v.height - v.height/2).toFloat()
+
+        // x 좌표 튜닝
+        //v.x += 30
+
+        if (v.x < 0) {
+            v.setX(0f)
+        } else if (v.x + v.width > parentWidth) {
+            v.x = (parentWidth - v.width).toFloat()
+        }
+        if (v.y < 0) {
+            v.setY(0f)
+        } else if (v.y + v.height > parentHeight) {
+            v.y = (parentHeight - v.height).toFloat()
+        }
+
+
+        // 윗 부분 남는 곳 처리.
+        if (v.y > emptySpace) v.y -= emptySpace
+        else if (v.y < emptySpace) v.y = 0f
+
+        // 아래 부분 남는 곳 처리.
+        if (v.y > maxHeight + emptySpace) v.y = (maxHeight + emptySpace - v.height).toFloat()
+
+        var x1 : Int = v.x.toInt()
+        var y1 : Int = v.y.toInt()
+
+        println("x1 : $x1 y1 : $y1")
+        println("event.x : " + event.x + " event.y : " + event.y) // event.x : 1034.121 event.y : 2155.9832
+
+        var result = Bitmap.createBitmap( original // 0, 0이 왼쪽 위다.
+            , x1//X 시작위치
+            , y1//Y 시작위치
+            , original.width / 4 // 넓이 (360/480 -> 90/120)
+            , original.width / 4
+        ) // 높이
+//        if (result != original) {
+//            original.recycle()
+//        }
+        return result
+    }
+
+
+
+
+
+    //        val ImageMat = Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8U, Scalar(4.0))
+//        val myBitmap32: Bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+//        Utils.bitmapToMat(myBitmap32, ImageMat)
+//
+//        Imgproc.cvtColor(ImageMat, ImageMat, Imgproc.COLOR_RGB2GRAY, 4)
+//
+//        val resultBitmap =
+//            Bitmap.createBitmap(ImageMat.cols(), ImageMat.rows(), Bitmap.Config.ARGB_8888)
+//        Utils.matToBitmap(ImageMat, resultBitmap)
+//        mResult = resultBitmap
+//
+//        val mat: Mat = OpenCvSharp.Extensions.BitmapConverter.ToMat(bitmap)
 
 
 

@@ -7,7 +7,10 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="false"
     tools:context=".MainActivity"
-    android:id="@+id/backArea">
+    android:id="@+id/backArea"
+    android:scrollbars="none"
+    android:overScrollMode="never"
+    >
 
         <TextureView
             android:id="@+id/preview"
@@ -16,7 +19,7 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:rotation="270"
+            android:rotation="0"
             app:layout_constraintBottom_toBottomOf="parent"/>
 
         <TextView
@@ -32,5 +35,20 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.5" />
+
+        <ImageView
+            android:id="@+id/edgeView"
+            android:layout_width="90dp"
+            android:layout_height="120dp"
+            android:src="@drawable/custom_square"
+            android:visibility="visible"
+
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.98"
+            android:rotation="0"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
