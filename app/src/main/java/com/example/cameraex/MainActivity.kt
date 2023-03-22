@@ -19,6 +19,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.HandlerThread
+import android.util.DisplayMetrics
 import android.util.Log
 import android.util.Size
 import android.view.*
@@ -626,42 +627,44 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     fun cropBitmap(edgeV : View, event: MotionEvent, original: Bitmap): Bitmap? {
         val v : View = edgeV
-//        val parentWidth = 1080 // 부모 View 의 Width
-//        val parentHeight = 2160 - 360 // 부모 View 의 Height
+
+        val deviceWidth = getDevicePx("deviceWidth") // 1080
+        val deviceHeight = getDevicePx("deviceHeight") // 2105
+        val maxHeight = preview.height // 1440
 
         // 위아래 빈공간
-        val emptySpace = 340
-        val maxHeight = preview.height
+        val emptySpace = (deviceHeight - maxHeight) / 2 // 332.5
 
-        val parentWidth = (v.parent as ViewGroup).width
-        val parentHeight = (v.parent as ViewGroup).height - emptySpace
+        val parentWidth = (v.parent as ViewGroup).width // 1080
+        val parentHeight = (v.parent as ViewGroup).height - emptySpace // 2172
+
         v.x = (event.x - v.width / 2)
         v.y = (event.y - v.height / 2)
 
         // 아래 부분 남는 곳 처리.
-        // if (v.y + v.height > parentHeight - v.height/2) v.y = (parentHeight - v.height - v.height/2).toFloat()
+        // 1170~1180 넘으면 꺼짐 패딩이라도 있는듯. 1140 - 180 = 1260까지 되는게 아니다.
+        val paddingTemp = 77
+        if (v.y > deviceHeight - emptySpace - v.height + paddingTemp) v.y = (deviceHeight - emptySpace - v.height + paddingTemp).toFloat()
 
-        // x 좌표 튜닝
-        //v.x += 30
+        // y 좌표 튜닝
+        v.y += emptySpace / 30
 
         if (v.x < 0) {
             v.setX(0f)
-        } else if (v.x + v.width > parentWidth) {
-            v.x = (parentWidth - v.width).toFloat()
+        } else if (v.x + v.width > deviceWidth) {
+            v.x = (deviceWidth - v.width).toFloat()
         }
         if (v.y < 0) {
             v.setY(0f)
-        } else if (v.y + v.height > parentHeight) {
-            v.y = (parentHeight - v.height).toFloat()
+        }
+        else if (v.y + v.height > deviceHeight) {
+            v.y = (deviceHeight - v.height).toFloat()
         }
 
 
         // 윗 부분 남는 곳 처리.
         if (v.y > emptySpace) v.y -= emptySpace
         else if (v.y < emptySpace) v.y = 0f
-
-        // 아래 부분 남는 곳 처리.
-        if (v.y > maxHeight + emptySpace) v.y = (maxHeight + emptySpace - v.height).toFloat()
 
         var x1 : Int = v.x.toInt()
         var y1 : Int = v.y.toInt()
@@ -682,8 +685,27 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
 
+    // Px과 Dp를 다루는 함수들
+    fun getDevicePx(str: String): Int {
+        val display = this.applicationContext?.resources?.displayMetrics
+        var deviceWidth = display?.widthPixels
+        var deviceHeight = display?.heightPixels
+//        deviceWidth = px2dp(deviceWidth!!, this)
+//        deviceHeight = px2dp(deviceHeight!!, this)
+//        Log.d("deviceSize", "${deviceWidth}")
+//        Log.d("deviceSize", "${deviceHeight}")
 
+        //var result : Int? = 0
+        when (str) {
+            "deviceWidth" -> return deviceWidth!!
+            "deviceHeight" -> return deviceHeight!!
+            else -> return 0
+        }
+    }
 
+    fun px2dp(px: Int, context: Context): Int {
+        return px / ((context.resources.displayMetrics.densityDpi.toFloat()) / DisplayMetrics.DENSITY_DEFAULT).toInt()
+    }
 
     //        val ImageMat = Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8U, Scalar(4.0))
 //        val myBitmap32: Bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
