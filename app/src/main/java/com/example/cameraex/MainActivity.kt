@@ -391,7 +391,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         when (event?.action) {
             MotionEvent.ACTION_DOWN -> {
                 touchCount++
-                edgeDetectionEdgeView(event)
+                edgeDetection(event)
                 moveView(circleView, event)
                 if (boxOnOff == 0) {
                     circleView.visibility = View.VISIBLE
@@ -402,14 +402,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 }
             }
             MotionEvent.ACTION_UP -> {
-                edgeDetectionEdgeView(event)
+                edgeDetection(event)
                 moveView(circleView, event)
                 Handler().postDelayed({
                     if (touchCount > 0)
                         touchCount-- }, DELAY)
             }
             MotionEvent.ACTION_MOVE -> {
-                edgeDetectionEdgeView(event)
+                edgeDetection(event)
                 moveView(circleView, event)
             }
         }
@@ -606,23 +606,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     // preview의 edge를 detection하여 edgeView에 보여준다.
-    fun edgeDetectionEdgeView(event: MotionEvent) {
-        var bitmap = makeGray(preview.bitmap)
+    fun edgeDetection(event: MotionEvent) {
+//        var bitmap = makeGray(preview.bitmap)
+        var bitmap = preview.bitmap
 
-        if (cropBitmap(edgeView, event, bitmap) != null) bitmap = cropBitmap(edgeView, event, bitmap)!!
+        if (cutBitmap(edgeView, event, bitmap) != null) bitmap = cutBitmap(edgeView, event, bitmap)!!
         val image = Mat()
         var edge = Mat()
 
         Utils.bitmapToMat(bitmap, image)
         // Canny Detection, HoughLine Detection
         edge = LineDetection(image)
-
-        // Canny Detection
-        //Imgproc.Canny(image, edge, 80.0, 200.0)
-
-        // HoughLine Detection
-        //lines = houghLineDetection(edge)
-        // Imgproc.HoughLines()
 
         val edgeBitmap = bitmap.copy(bitmap.config, true)
         Utils.matToBitmap(edge, edgeBitmap)
@@ -631,7 +625,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         moveView(edgeView, event)
     }
 
-    fun cropBitmap(edgeV : View, event: MotionEvent, original: Bitmap): Bitmap? {
+    fun cutBitmap(edgeV : View, event: MotionEvent, original: Bitmap): Bitmap? {
         val v : View = edgeV
 
         val deviceWidth = getDevicePx("deviceWidth") // 1080
@@ -719,14 +713,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         Imgproc.Canny(image, edge, 80.0, 200.0)
         // HoughLine Detection
         Imgproc.HoughLines(edge, lines, 1.0, Math.PI/180.0, 100)
-
-//        // HoughLine Detection
-//        var p1 = Point()
-//        var p2 = Point()
-//        val (a,b,x0,y0)= arrayOf(0.0,0.0,0.0,0.0)
-
         // Edge to Color
-        Imgproc.cvtColor(edge, edge, Imgproc.COLOR_GRAY2BGR)
+        // Imgproc.cvtColor(edge, edge, Imgproc.COLOR_GRAY2BGR)
 
         // Detection Lines Draw
         for (x in 0 until lines.rows()) {
@@ -738,16 +726,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             val y0 = b * rho
             val pt1 = org.opencv.core.Point(round(x0 + 5000*(-b)).toDouble(), round(y0 + 5000*(a)).toDouble())
             val pt2 = org.opencv.core.Point(round(x0 - 5000*(-b)).toDouble(), round(y0 - 5000*(a)).toDouble())
-            Imgproc.line(edge, pt1, pt2, Scalar(0.0,0.0,255.0), 2)
+            Imgproc.line(image, pt1, pt2, Scalar(255.0,0.0,255.0), 2)
         }
-
-//        // Utils.matToBitmap(lines, bitmap)
-//        for (i : Int in 0 until lines.row()) {
-//            double[] vec = lines.get(i, 0);
-//        }
-
-        //Utils.matToBitmap(lines, bitmap)
-        return edge
+        return image
     }
 
 
