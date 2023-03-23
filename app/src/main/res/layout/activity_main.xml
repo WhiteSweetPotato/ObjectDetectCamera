@@ -41,7 +41,7 @@
             android:layout_width="90dp"
             android:layout_height="120dp"
             android:src="@drawable/custom_square"
-            android:visibility="visible"
+            android:visibility="invisible"
 
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -52,3 +52,5 @@
             android:rotation="0"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
+
+<!--    android:background="#00000000"-->

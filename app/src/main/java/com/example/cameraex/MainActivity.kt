@@ -38,7 +38,6 @@ import org.opencv.imgproc.Imgproc
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
-import java.lang.Math
 import java.lang.Math.*
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
@@ -385,32 +384,34 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     // 카메라 함수 종료 <------------------------------------------------------------------------------------------------------------------------>
 
-    // 화면 한 번 터치시 박스를 그린다.
+    // 화면 한 번 터치시 view를 생성 한다.
     // 화면 두 번 터치시 사진 캡처를 한다.
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         when (event?.action) {
             MotionEvent.ACTION_DOWN -> {
                 touchCount++
                 edgeDetection(event)
-                moveView(circleView, event)
+                //moveView(circleView, event)
                 if (boxOnOff == 0) {
-                    circleView.visibility = View.VISIBLE
+//                    circleView.visibility = View.VISIBLE
+                    edgeView.visibility = View.VISIBLE
                     boxOnOff = 1
                 } else {
-                    circleView.visibility = View.INVISIBLE
+//                    circleView.visibility = View.INVISIBLE
+                    edgeView.visibility = View.INVISIBLE
                     boxOnOff = 0
                 }
             }
             MotionEvent.ACTION_UP -> {
                 edgeDetection(event)
-                moveView(circleView, event)
+                //moveView(circleView, event)
                 Handler().postDelayed({
                     if (touchCount > 0)
                         touchCount-- }, DELAY)
             }
             MotionEvent.ACTION_MOVE -> {
                 edgeDetection(event)
-                moveView(circleView, event)
+                //moveView(circleView, event)
             }
         }
 
@@ -448,21 +449,21 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     // 자이로스코프를 통해 뷰를 이동한다.
     fun moveObjectToGyroscope(v: View, str : String, value: Float) {
         val density = resources.displayMetrics.density
-        var constantNum_vct_x = 100f * density
-        var constantNum_vct_y = 80f * density
+        var constantNum_vct_x = 90f * density
+        var constantNum_vct_y = 120f * density
         var constantNum_vct_z = 100f * density
         var dp_x = pxToDp(v.x)
         var dp_y = pxToDp(v.y)
-        var dpMax_x = 360
-        var dpMax_y = 700
+        var dpMax_x = px2dp(getDevicePx("deviceWidth"), this)// 360
+        var dpMax_y = px2dp(getDevicePx("deviceHeight"), this)// 701
         var aspect_ratio = dpMax_y/dpMax_x
 
         when (str) {
             "x" -> {
-                v.x = v.x + constantNum_vct_x*value
+                v.y = v.y + constantNum_vct_y*value
             }
             "y" -> {
-                v.y = v.y - constantNum_vct_y*value
+                v.x = v.x + constantNum_vct_x*value
             }
             "z" -> {
                 when {
@@ -499,15 +500,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     // 자이로스코프 센서를 사용
     override fun onSensorChanged(event: SensorEvent?) {
 
-        val x = event?.values?.get(0) as Float // y축 기준으로 핸드폰 앞쪽으로 + 뒤로 -
-        val y = event?.values?.get(1) as Float // z축 기준으로 핸드폰 반시계 + 시계 -
-        val z = event?.values?.get(2) as Float // x축 기준으로 핸드폰 반시계 + 시계 -
+        val x = event?.values?.get(0) as Float // y축 기준으로 핸드폰 앞쪽(시계) - 뒤로(반시계) +
+        val y = event?.values?.get(1) as Float // z축 기준으로 핸드폰 시계 - 반시계 +
+        val z = event?.values?.get(2) as Float // x축 기준으로 핸드폰 시계 - 반시계 +
 
-        // println(x.toString() + ", " + y.toString() + ", " + z.toString())
+        //println(x.toString() + ", " + y.toString() + ", " + z.toString())
 
         if (boxOnOff == 1) {
-            moveObjectToGyroscope(circleView, "x", x);
-            moveObjectToGyroscope(circleView, "y", y);
+//            moveObjectToGyroscope(circleView, "x", x);
+//            moveObjectToGyroscope(circleView, "y", y);
+            moveObjectToGyroscope(edgeView, "x", x);
+            moveObjectToGyroscope(edgeView, "y", y);
         }
     }
 
@@ -618,8 +621,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // Canny Detection, HoughLine Detection
         edge = LineDetection(image)
 
-        val edgeBitmap = bitmap.copy(bitmap.config, true)
+        var edgeBitmap = bitmap.copy(bitmap.config, true)
         Utils.matToBitmap(edge, edgeBitmap)
+
+        // 검은 배경을 투명하게, 흰색 부분을 밝게
+        edgeBitmap = makeTransparent(edgeBitmap)
 
         edgeView.setImageBitmap(edgeBitmap)
         moveView(edgeView, event)
@@ -710,7 +716,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         //Utils.bitmapToMat(bitmap, image)
         // Canny Detection
-        Imgproc.Canny(image, edge, 80.0, 200.0)
+        Imgproc.Canny(image, edge, 150.0, 200.0)
         // HoughLine Detection
         Imgproc.HoughLines(edge, lines, 1.0, Math.PI/180.0, 100)
         // Edge to Color
@@ -726,14 +732,70 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             val y0 = b * rho
             val pt1 = org.opencv.core.Point(round(x0 + 5000*(-b)).toDouble(), round(y0 + 5000*(a)).toDouble())
             val pt2 = org.opencv.core.Point(round(x0 - 5000*(-b)).toDouble(), round(y0 - 5000*(a)).toDouble())
-            Imgproc.line(image, pt1, pt2, Scalar(255.0,0.0,255.0), 2)
+            Imgproc.line(edge, pt1, pt2, Scalar(255.0,255.0,255.0), 2)
         }
-        return image
+        return edge
+    }
+
+    // bitmap 투명하게 변환
+    private fun makeTransparent(bit: Bitmap): Bitmap? {
+        val width = bit.width
+        val height = bit.height
+        val myBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val allpixels = IntArray(myBitmap.height * myBitmap.width)
+        bit.getPixels(allpixels, 0, myBitmap.width, 0, 0, myBitmap.width, myBitmap.height)
+        myBitmap.setPixels(allpixels, 0, width, 0, 0, width, height)
+        for (i in 0 until myBitmap.height * myBitmap.width) {
+            if (allpixels[i] == Color.WHITE) { // 하얀색을 밝은 색으로
+                allpixels[i] = Color.MAGENTA
+            } else if (allpixels[i] == Color.BLACK) { // 검은 색을 투명하게
+                allpixels[i] = Color.alpha(Color.TRANSPARENT)
+            }
+        }
+        myBitmap.setPixels(allpixels, 0, myBitmap.width, 0, 0, myBitmap.width, myBitmap.height)
+        return myBitmap
+    }
+
+    //  bitmap 흑백으로 변환
+    private fun grayScale(orgBitmap: Bitmap): Bitmap? {
+        Log.i("gray", "in")
+        val width: Int
+        val height: Int
+        width = orgBitmap.width
+        height = orgBitmap.height
+        val bmpGrayScale = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_4444)
+
+        // color information
+        var A: Int
+        var R: Int
+        var G: Int
+        var B: Int
+        var pixel: Int
+
+        // scan through all pixels
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                // get pixel color
+                pixel = orgBitmap.getPixel(x, y)
+                A = Color.alpha(pixel)
+                R = Color.red(pixel)
+                G = Color.green(pixel)
+                B = Color.blue(pixel)
+                var gray = (0.2989 * R + 0.5870 * G + 0.1140 * B).toInt()
+
+                // use 128 as threshold, above -> white, below -> black
+                gray = if (gray > 128) 255 else 0
+                // set new pixel color to output bitmap
+                bmpGrayScale.setPixel(x, y, Color.argb(A, gray, gray, gray))
+            }
+        }
+        return bmpGrayScale
     }
 
 
-    // 아래는 사용 하지 않은 함수들
+
     // <------------------------------------------------------------------------------------------------------------------------>
+    // 20일 이전 추가
     fun objectOutOfLimit(v: View, str : String) {
         val parentWidth = (v.parent as ViewGroup).width // 부모 View 의 Width
         val parentHeight = (v.parent as ViewGroup).height // 부모 View 의 Height
