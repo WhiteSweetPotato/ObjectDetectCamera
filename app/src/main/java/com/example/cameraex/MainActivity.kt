@@ -3,10 +3,7 @@ package com.example.cameraex
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.ImageFormat
-import android.graphics.SurfaceTexture
+import android.graphics.*
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -35,11 +32,14 @@ import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.core.CvType
 import org.opencv.core.Mat
+import org.opencv.core.Scalar
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
+import java.lang.Math
+import java.lang.Math.*
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 
@@ -121,7 +121,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 //        ib_camera.setOnClickListener {
 //            takePicture()
 //        }
-
         if (OpenCVLoader.initDebug()) {
             println("MainActivity: Opencv is loaded")
         }
@@ -612,11 +611,18 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         if (cropBitmap(edgeView, event, bitmap) != null) bitmap = cropBitmap(edgeView, event, bitmap)!!
         val image = Mat()
-        val edge = Mat()
+        var edge = Mat()
 
         Utils.bitmapToMat(bitmap, image)
+        // Canny Detection, HoughLine Detection
+        edge = LineDetection(image)
 
-        Imgproc.Canny(image, edge, 0.0, 50.0)
+        // Canny Detection
+        //Imgproc.Canny(image, edge, 80.0, 200.0)
+
+        // HoughLine Detection
+        //lines = houghLineDetection(edge)
+        // Imgproc.HoughLines()
 
         val edgeBitmap = bitmap.copy(bitmap.config, true)
         Utils.matToBitmap(edge, edgeBitmap)
@@ -661,7 +667,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             v.y = (deviceHeight - v.height).toFloat()
         }
 
-
         // 윗 부분 남는 곳 처리.
         if (v.y > emptySpace) v.y -= emptySpace
         else if (v.y < emptySpace) v.y = 0f
@@ -684,7 +689,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         return result
     }
 
-
     // Px과 Dp를 다루는 함수들
     fun getDevicePx(str: String): Int {
         val display = this.applicationContext?.resources?.displayMetrics
@@ -695,7 +699,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 //        Log.d("deviceSize", "${deviceWidth}")
 //        Log.d("deviceSize", "${deviceHeight}")
 
-        //var result : Int? = 0
         when (str) {
             "deviceWidth" -> return deviceWidth!!
             "deviceHeight" -> return deviceHeight!!
@@ -707,19 +710,45 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         return px / ((context.resources.displayMetrics.densityDpi.toFloat()) / DisplayMetrics.DENSITY_DEFAULT).toInt()
     }
 
-    //        val ImageMat = Mat(bitmap.getHeight(), bitmap.getWidth(), CvType.CV_8U, Scalar(4.0))
-//        val myBitmap32: Bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-//        Utils.bitmapToMat(myBitmap32, ImageMat)
-//
-//        Imgproc.cvtColor(ImageMat, ImageMat, Imgproc.COLOR_RGB2GRAY, 4)
-//
-//        val resultBitmap =
-//            Bitmap.createBitmap(ImageMat.cols(), ImageMat.rows(), Bitmap.Config.ARGB_8888)
-//        Utils.matToBitmap(ImageMat, resultBitmap)
-//        mResult = resultBitmap
-//
-//        val mat: Mat = OpenCvSharp.Extensions.BitmapConverter.ToMat(bitmap)
+    fun LineDetection(image: Mat) : Mat {
+        val edge = Mat()
+        val lines = Mat()
 
+        //Utils.bitmapToMat(bitmap, image)
+        // Canny Detection
+        Imgproc.Canny(image, edge, 80.0, 200.0)
+        // HoughLine Detection
+        Imgproc.HoughLines(edge, lines, 1.0, Math.PI/180.0, 100)
+
+//        // HoughLine Detection
+//        var p1 = Point()
+//        var p2 = Point()
+//        val (a,b,x0,y0)= arrayOf(0.0,0.0,0.0,0.0)
+
+        // Edge to Color
+        Imgproc.cvtColor(edge, edge, Imgproc.COLOR_GRAY2BGR)
+
+        // Detection Lines Draw
+        for (x in 0 until lines.rows()) {
+            val rho = lines.get(x, 0)[0]
+            val theta = lines.get(x, 0)[1]
+            val a = cos(theta)
+            val b = sin(theta)
+            val x0 = a * rho
+            val y0 = b * rho
+            val pt1 = org.opencv.core.Point(round(x0 + 5000*(-b)).toDouble(), round(y0 + 5000*(a)).toDouble())
+            val pt2 = org.opencv.core.Point(round(x0 - 5000*(-b)).toDouble(), round(y0 - 5000*(a)).toDouble())
+            Imgproc.line(edge, pt1, pt2, Scalar(0.0,0.0,255.0), 2)
+        }
+
+//        // Utils.matToBitmap(lines, bitmap)
+//        for (i : Int in 0 until lines.row()) {
+//            double[] vec = lines.get(i, 0);
+//        }
+
+        //Utils.matToBitmap(lines, bitmap)
+        return edge
+    }
 
 
     // 아래는 사용 하지 않은 함수들
@@ -773,48 +802,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         println("gimgongta log dpi : $result")
         return result
     }
-
-//    // Px과 Dp를 다루는 함수들
-//    fun getDevicePx(str: String): Int {
-//        val display = this.applicationContext?.resources?.displayMetrics
-//        var deviceWidth = display?.widthPixels
-//        var deviceHeight = display?.heightPixels
-//        deviceWidth = px2dp(deviceWidth!!, this)
-//        deviceHeight = px2dp(deviceHeight!!, this)
-//
-//        Log.d("deviceSize", "${deviceWidth}")
-//        Log.d("deviceSize", "${deviceHeight}")
-//
-//        //var result : Int? = 0
-//        when (str) {
-//            "deviceWidth" -> return deviceWidth
-//            "deviceHeight" -> return deviceHeight
-//            else -> return 0
-//        }
-//    }
-
-//    private fun constraintWidget(constraintLayout: ConstraintLayout, target: Int, standard: Int, startMargin: Float, topMargin: Float) {
-//        val constraintSet = ConstraintSet()
-//        constraintSet.clone(constraintLayout)
-//        constraintSet.connect(target, ConstraintSet.START, standard, ConstraintSet.START, convertDpToPixel(startMargin, this))
-//        constraintSet.connect(target, ConstraintSet.TOP, standard, ConstraintSet.TOP, convertDpToPixel(topMargin, this))
-//        constraintSet.applyTo(constraintLayout)
-//    }
-//
-//    private fun convertDpToPixel(dp: Float, context: Context): Int {
-//        return (dp * (context.resources.displayMetrics.densityDpi.toFloat() / DisplayMetrics.DENSITY_DEFAULT)).toInt()
-//    }
-
-//    private class drawViewBox (context:Context) : View(context) {
-//        override fun onDraw(canvas: Canvas?) {
-//            super.onDraw(canvas)
-//            val paint = Paint()
-//            paint.color = Color.CYAN
-//            paint.style = Paint.Style.FILL
-//            canvas?.drawCircle(100f, 100f, 100f, paint)
-//        }
-//    }
-
 }
 
 
